@@ -8,7 +8,7 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const definition: ToolDefinition = {
   name: "unity_ping",
-  description: "Check if Unity Editor is connected and responsive.",
+  description: "🔗 Check if Unity Editor is connected and responding. Use this if other Unity tools fail or to verify connection before starting work.",
   inputSchema: {
     type: "object",
     properties: {},

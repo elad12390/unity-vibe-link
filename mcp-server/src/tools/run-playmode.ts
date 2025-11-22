@@ -9,13 +9,13 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 const definition: ToolDefinition = {
   name: "unity_run_playmode",
   description:
-    "Enter Play Mode for a specified duration and capture all logs/errors.",
+    "⏱️ TEST the game! Enter Play Mode to see if things work at runtime. Captures ALL logs and errors during playback. Use this to: test if game runs without errors, verify physics/collisions work, check if scripts execute correctly, test new enemies/gameplay. Returns all Debug.Log, warnings, and errors that occurred.",
   inputSchema: {
     type: "object",
     properties: {
       duration: {
         type: "number",
-        description: "How long to run in seconds",
+        description: "How long to run the game in seconds (3-10 seconds is usually enough for basic testing)",
         default: 5.0,
       },
     },

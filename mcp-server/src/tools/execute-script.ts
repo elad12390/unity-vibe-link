@@ -9,17 +9,17 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 const definition: ToolDefinition = {
   name: "unity_execute_script",
   description:
-    "Execute C# code directly in Unity Editor. Code runs in Editor context with full API access.",
+    "✋ CREATE and MODIFY things in Unity! Execute C# code directly in the Editor - no files needed. Use this to: create GameObjects (GameObject.CreatePrimitive), add components (AddComponent), modify properties (transform.position = ...), change materials, spawn enemies, adjust UI, etc. You have FULL access to UnityEngine and UnityEditor APIs. Example: To add an enemy, use GameObject.CreatePrimitive(PrimitiveType.Cube), name it 'Enemy', set position, add Rigidbody, etc.",
   inputSchema: {
     type: "object",
     properties: {
       code: {
         type: "string",
-        description: "C# code to execute",
+        description: "C# code to execute. Use UnityEngine and UnityEditor APIs. Example: 'var enemy = GameObject.CreatePrimitive(PrimitiveType.Sphere); enemy.name = \"Enemy\"; enemy.transform.position = new Vector3(5, 1, 0);'",
       },
       timeout: {
         type: "number",
-        description: "Execution timeout in seconds",
+        description: "Execution timeout in seconds (default 5)",
         default: 5.0,
       },
     },

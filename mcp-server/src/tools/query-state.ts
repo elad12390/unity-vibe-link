@@ -9,14 +9,14 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 const definition: ToolDefinition = {
   name: "unity_query_state",
   description:
-    "Query the state of GameObjects in the Unity scene using a selector syntax.",
+    "🔍 CHECK what exists in the scene! Query GameObjects to see what's already there, their positions, components, active state, etc. Use this BEFORE making changes to understand the current scene. Returns JSON with name, position, rotation, scale, components, active state, tag, layer. Essential when user asks about existing objects or before modifying them.",
   inputSchema: {
     type: "object",
     properties: {
       selector: {
         type: "string",
         description:
-          "GameObject selector (e.g., 'Player', '*', 'Player > Graphic')",
+          "GameObject selector: exact name like 'Player' or 'Enemy', '*' for all objects, 'Parent > Child' for hierarchy. Example: 'Player' finds the Player object, '*' lists everything.",
       },
     },
     required: ["selector"],
