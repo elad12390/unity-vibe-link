@@ -53,3 +53,4 @@ Assets/_AgentScratchpad/
 .idea/
 *.swp
 *.swo
+coverage/
