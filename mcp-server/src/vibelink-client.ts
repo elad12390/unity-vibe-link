@@ -141,8 +141,13 @@ export class VibeLinkClient {
     // Process complete messages (newline-delimited)
     let newlineIndex: number;
     while ((newlineIndex = this.buffer.indexOf("\n")) !== -1) {
-      const messageJson = this.buffer.substring(0, newlineIndex);
+      let messageJson = this.buffer.substring(0, newlineIndex);
       this.buffer = this.buffer.substring(newlineIndex + 1);
+
+      // Strip BOM if present (Unity sends UTF-8 with BOM)
+      if (messageJson.charCodeAt(0) === 0xFEFF) {
+        messageJson = messageJson.substring(1);
+      }
 
       try {
         const response: VibeLinkResponse = JSON.parse(messageJson);

@@ -48,6 +48,8 @@ Thumbs.db
 # VibeLink runtime
 .agent_view.png
 Assets/_AgentScratchpad/
+**/StartVibeLinkNow*.txt
+**/StartVibeLinkNow*.txt.meta
 
 # IDE
 .idea/

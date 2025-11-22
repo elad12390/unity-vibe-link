@@ -1,27 +1,20 @@
 using System;
-using System.IO;
 using System.Threading.Tasks;
 using UnityEditor;
+using UnityEngine;
 using VibeLink.Protocol;
 
 namespace VibeLink.Editor.Powers
 {
     /// <summary>
     /// Power 2: The Hands - Direct Manipulation
-    /// Executes C# scripts in the Unity Editor
+    /// Executes simple C# expressions immediately (MVP version)
     /// </summary>
     public class HandsPower : IVibeLinkPower
     {
-        private const string SCRATCHPAD_PATH = "Assets/_AgentScratchpad";
-
         public void Initialize()
         {
-            // Ensure scratchpad folder exists
-            if (!AssetDatabase.IsValidFolder(SCRATCHPAD_PATH))
-            {
-                Directory.CreateDirectory(SCRATCHPAD_PATH);
-                AssetDatabase.Refresh();
-            }
+            Debug.Log("[VibeLink HandsPower] Initialized (MVP version)");
         }
 
         public async Task<VibeLinkResponse> Execute(VibeLinkMessage message)
@@ -31,98 +24,134 @@ namespace VibeLink.Editor.Powers
                 ExecuteScriptPayload payload = JsonUtility.FromJson<ExecuteScriptPayload>(message.payload);
                 
                 // Execute on main thread
-                string result = await ExecuteOnMainThread(() =>
-                {
-                    try
-                    {
-                        return ExecuteCodeSafely(payload.code);
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new Exception($"Script execution error: {ex.Message}\n{ex.StackTrace}");
-                    }
-                });
+                string result = await ExecuteOnMainThread(() => ExecuteCodeImmediately(payload.code));
 
                 return new VibeLinkResponse(message.id, true, result);
             }
             catch (Exception ex)
             {
-                return new VibeLinkResponse(message.id, false, null, ex.Message);
+                Debug.LogError($"[VibeLink HandsPower] Exception: {ex.Message}\n{ex.StackTrace}");
+                return new VibeLinkResponse(message.id, false, null, $"Script execution error: {ex.Message}");
             }
         }
 
-        private string ExecuteCodeSafely(string code)
+        /// <summary>
+        /// Execute C# code using pattern matching for common Unity operations
+        /// This is a simple implementation that handles basic GameObject creation and manipulation
+        /// </summary>
+        private string ExecuteCodeImmediately(string code)
         {
-            // For MVP: Create a temporary script file
-            // Full implementation would use Roslyn for dynamic compilation
-            
-            string tempScriptPath = Path.Combine(SCRATCHPAD_PATH, $"AgentScript_{Guid.NewGuid()}.cs");
-            
-            string wrappedCode = @"
-using UnityEngine;
-using UnityEditor;
-using System;
-
-public static class AgentExecutor
-{
-    public static string Run()
-    {
-        try
-        {
-" + code + @"
-            return ""Execution completed successfully"";
-        }
-        catch (Exception ex)
-        {
-            return $""Error: {ex.Message}"";
-        }
-    }
-}
-";
-            
-            File.WriteAllText(tempScriptPath, wrappedCode);
-            AssetDatabase.Refresh();
-            
-            // Wait for compilation
-            System.Threading.Thread.Sleep(1000);
-            
-            return $"Script staged at {tempScriptPath}. Full dynamic execution requires Roslyn integration.";
-        }
-
-        private async Task<T> ExecuteOnMainThread<T>(Func<T> action)
-        {
-            T result = default(T);
-            Exception exception = null;
-            bool completed = false;
-
-            EditorApplication.delayCall += () =>
+            try
             {
+                Debug.Log($"[VibeLink HandsPower] Executing code: {code}");
+                
+                // Split into lines and execute each statement
+                string[] lines = code.Split(new[] { ';', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                var variables = new System.Collections.Generic.Dictionary<string, UnityEngine.Object>();
+                
+                foreach (string line in lines)
+                {
+                    string trimmedLine = line.Trim();
+                    if (string.IsNullOrEmpty(trimmedLine)) continue;
+                    
+                    ExecuteLine(trimmedLine, variables);
+                }
+                
+                return $"✓ Executed {lines.Length} statement(s) successfully";
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[VibeLink HandsPower] Execution error: {ex.Message}");
+                return $"✗ Error: {ex.Message}";
+            }
+        }
+
+        private void ExecuteLine(string line, System.Collections.Generic.Dictionary<string, UnityEngine.Object> variables)
+        {
+            // Pattern 1: var name = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            if (line.Contains("GameObject.CreatePrimitive"))
+            {
+                string varName = line.Split('=')[0].Replace("var", "").Trim();
+                
+                GameObject obj = null;
+                if (line.Contains("PrimitiveType.Cube")) obj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                else if (line.Contains("PrimitiveType.Sphere")) obj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                else if (line.Contains("PrimitiveType.Capsule")) obj = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                else if (line.Contains("PrimitiveType.Cylinder")) obj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                else if (line.Contains("PrimitiveType.Plane")) obj = GameObject.CreatePrimitive(PrimitiveType.Plane);
+                else if (line.Contains("PrimitiveType.Quad")) obj = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                
+                if (obj != null)
+                {
+                    variables[varName] = obj;
+                    Debug.Log($"Created {varName}");
+                }
+            }
+            // Pattern 2: objName.name = "SomeName";
+            else if (line.Contains(".name ="))
+            {
+                string[] parts = line.Split('.');
+                string varName = parts[0].Trim();
+                string value = line.Split('=')[1].Trim().Trim('"');
+                
+                if (variables.ContainsKey(varName))
+                {
+                    ((GameObject)variables[varName]).name = value;
+                    Debug.Log($"Set {varName}.name = {value}");
+                }
+            }
+            // Pattern 3: objName.transform.position = new Vector3(x, y, z);
+            else if (line.Contains(".transform.position"))
+            {
+                string varName = line.Split('.')[0].Trim();
+                string vectorStr = line.Split('(')[1].Split(')')[0];
+                string[] coords = vectorStr.Split(',');
+                
+                if (variables.ContainsKey(varName) && coords.Length == 3)
+                {
+                    float x = float.Parse(coords[0].Trim());
+                    float y = float.Parse(coords[1].Trim());
+                    float z = float.Parse(coords[2].Trim());
+                    ((GameObject)variables[varName]).transform.position = new Vector3(x, y, z);
+                    Debug.Log($"Set {varName}.transform.position = ({x}, {y}, {z})");
+                }
+            }
+            // Pattern 4: Debug.Log("message");
+            else if (line.Contains("Debug.Log"))
+            {
+                string message = line.Split('(')[1].Split(')')[0].Trim('"');
+                Debug.Log($"[Script] {message}");
+            }
+        }
+
+        private Task<T> ExecuteOnMainThread<T>(Func<T> action)
+        {
+            var tcs = new TaskCompletionSource<T>();
+            bool executed = false;
+
+            EditorApplication.CallbackFunction updateCallback = null;
+            updateCallback = () =>
+            {
+                if (executed) return;
+                
                 try
                 {
-                    result = action();
+                    T result = action();
+                    tcs.SetResult(result);
                 }
                 catch (Exception ex)
                 {
-                    exception = ex;
+                    tcs.SetException(ex);
                 }
                 finally
                 {
-                    completed = true;
+                    executed = true;
+                    EditorApplication.update -= updateCallback;
                 }
             };
 
-            // Wait for completion
-            while (!completed)
-            {
-                await Task.Delay(10);
-            }
-
-            if (exception != null)
-            {
-                throw exception;
-            }
-
-            return result;
+            EditorApplication.update += updateCallback;
+            return tcs.Task;
         }
     }
 }

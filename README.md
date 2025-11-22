@@ -4,6 +4,10 @@
 
 VibeLink is a hybrid Unity Package + MCP Server that gives CLI-based AI agents (Claude Code, Cursor, etc.) direct access to Unity's Editor through the Model Context Protocol.
 
+> **Status**: ✅ **Working!** See [CURRENT_STATUS.md](./CURRENT_STATUS.md) for latest test results and known issues.
+> 
+> **Quick Test**: After Unity restart, run `./test-after-restart.sh` to verify all features work.
+
 ## 🎯 Core Capabilities ("The Superpowers")
 
 ### 🔴 Power 1: The Eyes (Visual Verification)

@@ -25,6 +25,7 @@ namespace VibeLink.Editor.Powers
             {
                 QueryStatePayload payload = JsonUtility.FromJson<QueryStatePayload>(message.payload);
                 
+                // Must execute on main thread for GameObject operations
                 string result = await ExecuteOnMainThread(() =>
                 {
                     GameObject[] objects = FindObjectsBySelector(payload.selector);
@@ -42,7 +43,7 @@ namespace VibeLink.Editor.Powers
 
                     return "[" + string.Join(",", results) + "]";
                 });
-
+                
                 return new VibeLinkResponse(message.id, true, result);
             }
             catch (Exception ex)
@@ -101,39 +102,36 @@ namespace VibeLink.Editor.Powers
             return JsonUtility.ToJson(data);
         }
 
-        private async Task<T> ExecuteOnMainThread<T>(Func<T> action)
+        private Task<T> ExecuteOnMainThread<T>(Func<T> action)
         {
-            T result = default(T);
-            Exception exception = null;
-            bool completed = false;
+            var tcs = new TaskCompletionSource<T>();
+            bool executed = false;
 
-            EditorApplication.delayCall += () =>
+            // Use EditorApplication.update instead of delayCall
+            // It's more reliable for async contexts
+            EditorApplication.CallbackFunction updateCallback = null;
+            updateCallback = () =>
             {
+                if (executed) return;
+                
                 try
                 {
-                    result = action();
+                    T result = action();
+                    tcs.SetResult(result);
                 }
                 catch (Exception ex)
                 {
-                    exception = ex;
+                    tcs.SetException(ex);
                 }
                 finally
                 {
-                    completed = true;
+                    executed = true;
+                    EditorApplication.update -= updateCallback;
                 }
             };
 
-            while (!completed)
-            {
-                await Task.Delay(10);
-            }
-
-            if (exception != null)
-            {
-                throw exception;
-            }
-
-            return result;
+            EditorApplication.update += updateCallback;
+            return tcs.Task;
         }
     }
 }

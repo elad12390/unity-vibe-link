@@ -61,9 +61,9 @@ namespace VibeLink.Editor.Powers
             }
         }
 
-        private async Task<byte[]> CaptureGameView(int width, int height)
+        private Task<byte[]> CaptureGameView(int width, int height)
         {
-            return await Task.Run(() =>
+            return ExecuteOnMainThread(() =>
             {
                 Camera camera = Camera.main;
                 if (camera == null)
@@ -95,9 +95,9 @@ namespace VibeLink.Editor.Powers
             });
         }
 
-        private async Task<byte[]> CaptureSceneView(int width, int height)
+        private Task<byte[]> CaptureSceneView(int width, int height)
         {
-            return await Task.Run(() =>
+            return ExecuteOnMainThread(() =>
             {
                 SceneView sceneView = SceneView.lastActiveSceneView;
                 if (sceneView == null)
@@ -123,6 +123,36 @@ namespace VibeLink.Editor.Powers
 
                 return screenshot.EncodeToPNG();
             });
+        }
+
+        private Task<T> ExecuteOnMainThread<T>(Func<T> action)
+        {
+            var tcs = new TaskCompletionSource<T>();
+            bool executed = false;
+
+            EditorApplication.CallbackFunction updateCallback = null;
+            updateCallback = () =>
+            {
+                if (executed) return;
+                
+                try
+                {
+                    T result = action();
+                    tcs.SetResult(result);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+                finally
+                {
+                    executed = true;
+                    EditorApplication.update -= updateCallback;
+                }
+            };
+
+            EditorApplication.update += updateCallback;
+            return tcs.Task;
         }
     }
 }
