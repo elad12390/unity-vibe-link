@@ -331,24 +331,29 @@ describe('VibeLinkClient Edge Cases', () => {
       mockSocket.emit('data', Buffer.from('{"partial'));
 
       // Disconnect
+      await client.disconnect();
       mockSocket.emit('close');
 
-      // Reconnect
-      mockSocket = createMockSocket();
-      (net.createConnection as jest.Mock).mockReturnValue(mockSocket);
+      // Small delay to ensure cleanup
+      await new Promise(resolve => setTimeout(resolve, 50));
 
-      connectPromise = client.connect();
-      setImmediate(() => mockSocket.emit('connect'));
+      // Create new client for reconnect (simpler than trying to reuse)
+      const newClient = new VibeLinkClient();
+      const newMockSocket = createMockSocket();
+      (net.createConnection as jest.Mock).mockReturnValue(newMockSocket);
+
+      connectPromise = newClient.connect();
+      setImmediate(() => newMockSocket.emit('connect'));
       await connectPromise;
 
       // New command should work fine
-      const commandPromise = client.sendCommand('test', {});
+      const commandPromise = newClient.sendCommand('test', {});
 
-      const sentMessage = mockSocket.write.mock.calls[0][0];
+      const sentMessage = newMockSocket.write.mock.calls[0][0];
       const parsedMessage = JSON.parse(sentMessage.toString().trim());
 
       setImmediate(() => {
-        mockSocket.emit(
+        newMockSocket.emit(
           'data',
           Buffer.from(
             JSON.stringify({
@@ -362,6 +367,8 @@ describe('VibeLinkClient Edge Cases', () => {
 
       const result = await commandPromise;
       expect(result).toBe('ok');
+      
+      await newClient.disconnect();
     });
   });
 
