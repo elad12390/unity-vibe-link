@@ -1,5 +1,5 @@
 {
-  "name": "@vibelink/mcp-server",
+  "name": "vibelink-mcp-server",
   "version": "1.0.0-alpha.1",
   "description": "MCP Server for VibeLink - Unity Agentic Bridge. Enable AI agents to interact with Unity Editor through the Model Context Protocol.",
   "main": "build/index.js",

@@ -1,4 +1,4 @@
-# @vibelink/mcp-server
+# vibelink-mcp-server
 
 MCP Server for VibeLink - Unity Agentic Bridge
 
@@ -7,7 +7,7 @@ Enable AI agents (Claude Code, OpenCode, Cursor, etc.) to interact with Unity Ed
 ## Installation
 
 ```bash
-npm install -g @vibelink/mcp-server
+npm install -g vibelink-mcp-server
 ```
 
 ## Usage
@@ -27,7 +27,7 @@ Add to your MCP config file (e.g., `~/.config/opencode/mcp.json`):
   "mcpServers": {
     "vibelink-unity": {
       "command": "npx",
-      "args": ["@vibelink/mcp-server"]
+      "args": ["vibelink-mcp-server"]
     }
   }
 }
