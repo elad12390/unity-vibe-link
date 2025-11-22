@@ -116,22 +116,34 @@ describe('VibeLinkClient Integration Tests', () => {
     await client.connect();
 
     const receivedCommands: string[] = [];
+    let buffer = '';
 
     // Set up server to respond with delay
     serverSocket?.on('data', (data) => {
-      const message = JSON.parse(data.toString().trim());
-      receivedCommands.push(message.command);
+      buffer += data.toString();
       
-      // Simulate processing delay
-      setTimeout(() => {
-        const response = {
-          id: message.id,
-          success: true,
-          result: `Result: ${message.command}`,
-        };
+      // Process complete messages
+      let newlineIndex;
+      while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+        const messageStr = buffer.substring(0, newlineIndex);
+        buffer = buffer.substring(newlineIndex + 1);
+        
+        if (messageStr.trim()) {
+          const message = JSON.parse(messageStr);
+          receivedCommands.push(message.command);
+          
+          // Simulate processing delay
+          setTimeout(() => {
+            const response = {
+              id: message.id,
+              success: true,
+              result: `Result: ${message.command}`,
+            };
 
-        serverSocket?.write(JSON.stringify(response) + '\n');
-      }, Math.random() * 100);
+            serverSocket?.write(JSON.stringify(response) + '\n');
+          }, Math.random() * 100);
+        }
+      }
     });
 
     // Send multiple commands concurrently
@@ -153,7 +165,10 @@ describe('VibeLinkClient Integration Tests', () => {
     expect(receivedCommands).toHaveLength(4);
 
     await client.disconnect();
-  }, 10000);
+    
+    // Clean up
+    buffer = '';
+  }, 15000);
 
   test('should handle server sending error response', async () => {
     const client = new VibeLinkClient();

@@ -1,0 +1,26 @@
+# Source files (we ship built code)
+src/
+
+# Tests
+**/__tests__/
+**/*.test.ts
+jest.config.js
+coverage/
+
+# Development files
+tsconfig.json
+.eslintrc*
+.prettierrc*
+
+# OS files
+.DS_Store
+*.swp
+*.swo
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*

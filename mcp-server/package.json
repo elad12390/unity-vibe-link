@@ -1,9 +1,17 @@
 {
-  "name": "vibelink-mcp-server",
-  "version": "1.0.0-alpha",
-  "description": "MCP Server for VibeLink - Unity Agentic Bridge",
+  "name": "@vibelink/mcp-server",
+  "version": "1.0.0-alpha.1",
+  "description": "MCP Server for VibeLink - Unity Agentic Bridge. Enable AI agents to interact with Unity Editor through the Model Context Protocol.",
   "main": "build/index.js",
   "type": "module",
+  "bin": {
+    "vibelink-mcp": "build/index.js"
+  },
+  "files": [
+    "build/**/*",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
@@ -12,11 +20,38 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:integration": "jest --testPathPattern=integration"
+    "test:integration": "jest --testPathPattern=integration",
+    "prepublishOnly": "npm run build && npm run test:unit",
+    "test:unit": "jest --testPathIgnorePatterns=integration"
   },
-  "keywords": ["mcp", "unity", "ai", "agent"],
-  "author": "VibeLink",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "unity",
+    "unity3d",
+    "game-development",
+    "ai",
+    "agent",
+    "ai-agent",
+    "automation",
+    "claude",
+    "opencode",
+    "cursor"
+  ],
+  "author": "VibeLink Contributors",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elad12390/unity-vibe-link.git",
+    "directory": "mcp-server"
+  },
+  "bugs": {
+    "url": "https://github.com/elad12390/unity-vibe-link/issues"
+  },
+  "homepage": "https://github.com/elad12390/unity-vibe-link#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0"
   },
