@@ -2,8 +2,9 @@
  * Utility tool for connectivity testing
  */
 
-import { UnityTool, ToolDefinition, ToolHandler, ToolResponse } from "./types.js";
+import { UnityTool, ToolDefinition, ToolHandler } from "./types.js";
 import { VibeLinkClient } from "../vibelink-client.js";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const definition: ToolDefinition = {
   name: "unity_ping",
@@ -15,7 +16,7 @@ const definition: ToolDefinition = {
 };
 
 const handler: ToolHandler = {
-  async execute(client: VibeLinkClient, args: any): Promise<ToolResponse> {
+  async execute(client: VibeLinkClient, args: any): Promise<CallToolResult> {
     const result = await client.sendCommand("ping", {});
     
     return {

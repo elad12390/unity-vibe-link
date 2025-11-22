@@ -2,8 +2,9 @@
  * Power 2: The Hands - Direct Manipulation
  */
 
-import { UnityTool, ToolDefinition, ToolHandler, ToolResponse } from "./types.js";
+import { UnityTool, ToolDefinition, ToolHandler } from "./types.js";
 import { VibeLinkClient } from "../vibelink-client.js";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const definition: ToolDefinition = {
   name: "unity_execute_script",
@@ -27,7 +28,7 @@ const definition: ToolDefinition = {
 };
 
 const handler: ToolHandler = {
-  async execute(client: VibeLinkClient, args: any): Promise<ToolResponse> {
+  async execute(client: VibeLinkClient, args: any): Promise<CallToolResult> {
     const result = await client.sendCommand("unity_execute_script", args);
     
     return {

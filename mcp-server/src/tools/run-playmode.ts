@@ -2,8 +2,9 @@
  * Power 4: The Time Machine - Test Running
  */
 
-import { UnityTool, ToolDefinition, ToolHandler, ToolResponse } from "./types.js";
+import { UnityTool, ToolDefinition, ToolHandler } from "./types.js";
 import { VibeLinkClient } from "../vibelink-client.js";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const definition: ToolDefinition = {
   name: "unity_run_playmode",
@@ -23,7 +24,7 @@ const definition: ToolDefinition = {
 };
 
 const handler: ToolHandler = {
-  async execute(client: VibeLinkClient, args: any): Promise<ToolResponse> {
+  async execute(client: VibeLinkClient, args: any): Promise<CallToolResult> {
     const result = await client.sendCommand("unity_run_playmode", args);
     
     return {

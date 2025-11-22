@@ -3,29 +3,12 @@
  */
 
 import { VibeLinkClient } from "../vibelink-client.js";
+import { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
 
-export interface ToolDefinition {
-  name: string;
-  description: string;
-  inputSchema: {
-    type: "object";
-    properties: Record<string, any>;
-    required?: string[];
-  };
-}
+export type ToolDefinition = Tool;
 
 export interface ToolHandler {
-  execute(client: VibeLinkClient, args: any): Promise<ToolResponse>;
-}
-
-export interface ToolResponse {
-  content: Array<{
-    type: "text" | "image";
-    text?: string;
-    data?: string;
-    mimeType?: string;
-  }>;
-  isError?: boolean;
+  execute(client: VibeLinkClient, args: any): Promise<CallToolResult>;
 }
 
 export interface UnityTool {
