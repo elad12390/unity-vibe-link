@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using VibeLink.Transport;
 using VibeLink.Protocol;
+using VibeLink.Powers;
 
 namespace VibeLink.Editor
 {
@@ -64,7 +65,15 @@ namespace VibeLink.Editor
         private void OnEnable()
         {
             _instance = this;
-            _executor = new VibeLinkExecutor();
+            
+            // Initialize all Powers
+            var eyesPower = new EyesPower();
+            var handsPower = new HandsPower();
+            var brainPower = new BrainPower();
+            var timeMachinePower = new TimeMachinePower();
+            
+            // Create executor with modular Powers
+            _executor = new VibeLinkExecutor(eyesPower, handsPower, brainPower, timeMachinePower);
         }
 
         private void OnDisable()
@@ -113,34 +122,16 @@ namespace VibeLink.Editor
                 VibeLinkMessage message = VibeLinkMessage.FromJson(messageJson);
                 Debug.Log($"[VibeLink] Received command: {message.command}");
 
-                VibeLinkResponse response = null;
+                VibeLinkResponse response;
 
-                // Route to appropriate handler
-                switch (message.command)
+                // Handle ping separately, delegate all Powers to executor
+                if (message.command == "ping")
                 {
-                    case "unity_capture_view":
-                        response = await _executor.CaptureView(message);
-                        break;
-
-                    case "unity_execute_script":
-                        response = await _executor.ExecuteScript(message);
-                        break;
-
-                    case "unity_query_state":
-                        response = await _executor.QueryState(message);
-                        break;
-
-                    case "unity_run_playmode":
-                        response = await _executor.RunPlayMode(message);
-                        break;
-
-                    case "ping":
-                        response = new VibeLinkResponse(message.id, true, "pong");
-                        break;
-
-                    default:
-                        response = new VibeLinkResponse(message.id, false, null, $"Unknown command: {message.command}");
-                        break;
+                    response = new VibeLinkResponse(message.id, true, "pong");
+                }
+                else
+                {
+                    response = await _executor.Execute(message);
                 }
 
                 // Send response back
