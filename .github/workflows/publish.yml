@@ -1,0 +1,65 @@
+name: Publish to NPM
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0, v1.0.0-alpha.1, etc.
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  publish:
+    name: Publish Package
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Install dependencies
+      working-directory: ./mcp-server
+      run: npm ci
+
+    - name: Run tests
+      working-directory: ./mcp-server
+      run: npm run test:unit
+
+    - name: Build package
+      working-directory: ./mcp-server
+      run: npm run build
+
+    - name: Publish to NPM
+      working-directory: ./mcp-server
+      run: npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: VibeLink ${{ github.ref_name }}
+        body: |
+          ## VibeLink Release ${{ github.ref_name }}
+          
+          ### NPM Package
+          ```bash
+          npm install -g @vibelink/mcp-server@${{ github.ref_name }}
+          ```
+          
+          ### Changes
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          
+          ### Installation
+          - NPM: `npm install -g @vibelink/mcp-server`
+          - Unity: See [README.md](https://github.com/${{ github.repository }}/blob/main/README.md)
+        draft: false
+        prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
