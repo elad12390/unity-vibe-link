@@ -10,7 +10,7 @@
 
 ## Code Philosophy
 - **Simplicity over Cleverness**: Write code that's obvious, not clever. Prefer simple solutions over complex abstractions.
-- **Complexity is the Enemy**: Each layer of abstraction adds cognitive load. Minimize indirection. ([Simple Made Easy](https://www.infoq.com/presentations/Simple-Made-Easy/))
+- **Complexity is the Enemy**: Each layer of abstraction/indirection adds cognitive load. "Simple" = one concept, "Easy" = familiar. Choose simple over easy. Complecting (intertwining) concerns makes code hard to change and understand.
 - **Modular but Not Over-Engineered**: Break code into small, focused modules with single responsibilities. Avoid unnecessary generalization.
 - **Code Should Read Like Prose**: Functions should be short, names should be clear, intent should be obvious without comments.
 
