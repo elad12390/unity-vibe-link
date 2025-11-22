@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vibelink-unity": {
+      "command": "node",
+      "args": ["/absolute/path/to/unity-vibe-link/mcp-server/build/index.js"]
+    }
+  }
+}

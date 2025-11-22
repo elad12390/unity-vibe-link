@@ -1,0 +1,13 @@
+{
+  "name": "com.vibelink.unity",
+  "version": "1.0.0-alpha",
+  "displayName": "VibeLink - Unity Agentic Bridge",
+  "description": "Enables AI agents to interact with Unity Editor through Model Context Protocol (MCP)",
+  "unity": "2021.3",
+  "keywords": ["AI", "Agent", "MCP", "Development", "Automation"],
+  "author": {
+    "name": "VibeLink",
+    "url": "https://github.com/vibelink/unity-vibe-link"
+  },
+  "dependencies": {}
+}
