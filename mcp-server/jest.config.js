@@ -7,6 +7,7 @@ export default {
     'src/**/*.ts',
     '!src/**/*.d.ts',
     '!src/**/__tests__/**',
+    '!src/index.ts', // MCP server entry point - integration tested separately
   ],
   coverageThreshold: {
     global: {
