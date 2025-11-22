@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.IO;
 using System.IO.Pipes;
 using System.Text;
@@ -11,23 +12,34 @@ namespace VibeLink.Transport
     /// <summary>
     /// Named Pipe transport layer for low-latency communication with MCP server
     /// Uses .NET Standard 2.1 pipes (Unity 2021.3+)
+    /// Supports multiple concurrent MCP connections
     /// </summary>
     public class VibeLinkTransport : IDisposable
     {
         private const string PIPE_NAME = "vibelink_unity_pipe";
-        private NamedPipeServerStream _pipeServer;
-        private StreamReader _reader;
-        private StreamWriter _writer;
+        private const int MAX_CONNECTIONS = 10; // Support up to 10 MCP servers
+        
+        private class ClientConnection
+        {
+            public NamedPipeServerStream Pipe;
+            public StreamReader Reader;
+            public StreamWriter Writer;
+            public Task ListenTask;
+        }
+
+        private ConcurrentBag<ClientConnection> _clients = new ConcurrentBag<ClientConnection>();
         private CancellationTokenSource _cts;
-        private Task _listenTask;
+        private Task _acceptTask;
         private bool _isRunning;
+        private int _activeConnections = 0;
 
         public event Action<string> OnMessageReceived;
         public event Action<Exception> OnError;
         public event Action OnClientConnected;
         public event Action OnClientDisconnected;
 
-        public bool IsConnected => _pipeServer?.IsConnected ?? false;
+        public bool IsConnected => _activeConnections > 0;
+        public int ActiveConnections => _activeConnections;
 
         public async Task StartAsync()
         {
@@ -40,89 +52,115 @@ namespace VibeLink.Transport
             _isRunning = true;
             _cts = new CancellationTokenSource();
 
-            try
+            Debug.Log($"[VibeLink] Server started on pipe: {PIPE_NAME} (supporting up to {MAX_CONNECTIONS} connections)");
+
+            // Start accepting connections in a loop
+            _acceptTask = Task.Run(AcceptConnectionsLoop, _cts.Token);
+        }
+
+        private async Task AcceptConnectionsLoop()
+        {
+            while (_isRunning && !_cts.Token.IsCancellationRequested)
             {
-                // Create named pipe server
-                _pipeServer = new NamedPipeServerStream(
-                    PIPE_NAME,
-                    PipeDirection.InOut,
-                    1, // Max 1 connection
-                    PipeTransmissionMode.Message,
-                    PipeOptions.Asynchronous
-                );
+                try
+                {
+                    // Create a new pipe server for this connection
+                    var pipeServer = new NamedPipeServerStream(
+                        PIPE_NAME,
+                        PipeDirection.InOut,
+                        MAX_CONNECTIONS,
+                        PipeTransmissionMode.Byte, // Use Byte mode for macOS compatibility
+                        PipeOptions.Asynchronous
+                    );
 
-                Debug.Log($"[VibeLink] Waiting for MCP client connection on pipe: {PIPE_NAME}");
+                    Debug.Log($"[VibeLink] Waiting for MCP client connection... (active: {_activeConnections})");
 
-                // Wait for client connection
-                await _pipeServer.WaitForConnectionAsync(_cts.Token);
+                    // Wait for client connection
+                    await pipeServer.WaitForConnectionAsync(_cts.Token);
 
-                Debug.Log("[VibeLink] MCP client connected!");
+                    Interlocked.Increment(ref _activeConnections);
+                    Debug.Log($"[VibeLink] MCP client connected! (total connections: {_activeConnections})");
 
-                // Initialize readers/writers
-                _reader = new StreamReader(_pipeServer, Encoding.UTF8);
-                _writer = new StreamWriter(_pipeServer, Encoding.UTF8) { AutoFlush = true };
+                    // Create client connection object
+                    var client = new ClientConnection
+                    {
+                        Pipe = pipeServer,
+                        Reader = new StreamReader(pipeServer, Encoding.UTF8),
+                        Writer = new StreamWriter(pipeServer, Encoding.UTF8) { AutoFlush = true }
+                    };
 
-                OnClientConnected?.Invoke();
+                    _clients.Add(client);
+                    OnClientConnected?.Invoke();
 
-                // Start listening for messages
-                _listenTask = Task.Run(ListenLoop, _cts.Token);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[VibeLink] Failed to start transport: {ex.Message}");
-                OnError?.Invoke(ex);
-                _isRunning = false;
+                    // Handle this client in a separate task
+                    client.ListenTask = Task.Run(() => HandleClient(client), _cts.Token);
+                }
+                catch (Exception ex)
+                {
+                    if (_isRunning) // Only log if we didn't intentionally stop
+                    {
+                        Debug.LogError($"[VibeLink] Failed to accept connection: {ex.Message}");
+                        OnError?.Invoke(ex);
+                    }
+                }
             }
         }
 
-        private async Task ListenLoop()
+        private async Task HandleClient(ClientConnection client)
         {
             try
             {
-                while (_isRunning && !_cts.Token.IsCancellationRequested)
+                // Listen for messages from this client
+                while (_isRunning && client.Pipe.IsConnected && !_cts.Token.IsCancellationRequested)
                 {
-                    if (_pipeServer.IsConnected)
+                    string message = await client.Reader.ReadLineAsync();
+                    if (!string.IsNullOrEmpty(message))
                     {
-                        string message = await _reader.ReadLineAsync();
-                        if (!string.IsNullOrEmpty(message))
-                        {
-                            OnMessageReceived?.Invoke(message);
-                        }
-                    }
-                    else
-                    {
-                        Debug.LogWarning("[VibeLink] Client disconnected");
-                        OnClientDisconnected?.Invoke();
-                        break;
+                        OnMessageReceived?.Invoke(message);
                     }
                 }
             }
             catch (Exception ex)
             {
-                if (_isRunning) // Only log if we didn't intentionally stop
+                if (_isRunning)
                 {
-                    Debug.LogError($"[VibeLink] Listen loop error: {ex.Message}");
-                    OnError?.Invoke(ex);
+                    Debug.LogError($"[VibeLink] Client handler error: {ex.Message}");
                 }
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _activeConnections);
+                Debug.Log($"[VibeLink] Client disconnected (remaining: {_activeConnections})");
+                OnClientDisconnected?.Invoke();
+
+                client.Reader?.Dispose();
+                client.Writer?.Dispose();
+                client.Pipe?.Dispose();
             }
         }
 
         public async Task SendMessageAsync(string message)
         {
-            if (!IsConnected)
+            if (_activeConnections == 0)
             {
-                Debug.LogWarning("[VibeLink] Cannot send message - not connected");
+                Debug.LogWarning("[VibeLink] Cannot send message - no clients connected");
                 return;
             }
 
-            try
+            // Broadcast message to ALL connected clients
+            foreach (var client in _clients)
             {
-                await _writer.WriteLineAsync(message);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[VibeLink] Failed to send message: {ex.Message}");
-                OnError?.Invoke(ex);
+                if (client.Pipe?.IsConnected == true)
+                {
+                    try
+                    {
+                        await client.Writer.WriteLineAsync(message);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[VibeLink] Failed to send message to client: {ex.Message}");
+                    }
+                }
             }
         }
 
@@ -133,9 +171,16 @@ namespace VibeLink.Transport
             _isRunning = false;
             _cts?.Cancel();
 
-            _reader?.Dispose();
-            _writer?.Dispose();
-            _pipeServer?.Dispose();
+            // Dispose all client connections
+            foreach (var client in _clients)
+            {
+                client.Reader?.Dispose();
+                client.Writer?.Dispose();
+                client.Pipe?.Dispose();
+            }
+
+            _clients = new ConcurrentBag<ClientConnection>();
+            _activeConnections = 0;
 
             Debug.Log("[VibeLink] Transport stopped");
         }
