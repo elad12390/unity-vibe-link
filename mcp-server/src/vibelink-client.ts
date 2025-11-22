@@ -1,6 +1,7 @@
 import net from "net";
 import { promises as fs } from "fs";
 import path from "path";
+import os from "os";
 
 interface VibeLinkMessage {
   id: string;
@@ -173,8 +174,8 @@ export class VibeLinkClient {
     if (process.platform === "win32") {
       return `\\\\.\\pipe\\${VibeLinkClient.PIPE_NAME}`;
     } else {
-      // Unix domain socket
-      return `/tmp/${VibeLinkClient.PIPE_NAME}`;
+      // Unix domain socket - .NET Core creates pipes with CoreFxPipe_ prefix in tmpdir
+      return path.join(os.tmpdir(), `CoreFxPipe_${VibeLinkClient.PIPE_NAME}`);
     }
   }
 
