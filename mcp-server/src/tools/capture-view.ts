@@ -34,19 +34,35 @@ const handler: ToolHandler = {
   async execute(client: VibeLinkClient, args: any): Promise<CallToolResult> {
     const result = await client.sendCommand("unity_capture_view", args);
     
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Screenshot saved to: ${result}`,
-        },
-        {
-          type: "image",
-          data: await client.readImageAsBase64(result),
-          mimeType: "image/png",
-        },
-      ],
-    };
+    // Debug: log the path we received
+    console.error(`[capture-view] Unity returned path: ${result}`);
+    
+    try {
+      const imageData = await client.readImageAsBase64(result);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Screenshot saved to: ${result}`,
+          },
+          {
+            type: "image",
+            data: imageData,
+            mimeType: "image/png",
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: Unity returned path "${result}" but failed to read: ${error}`,
+          },
+        ],
+        isError: true,
+      };
+    }
   },
 };
 

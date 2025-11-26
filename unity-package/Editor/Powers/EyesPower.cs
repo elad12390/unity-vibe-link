@@ -13,7 +13,17 @@ namespace VibeLink.Editor.Powers
     /// </summary>
     public class EyesPower : IVibeLinkPower
     {
-        private const string SCREENSHOT_PATH = ".agent_view.png";
+        private const string SCREENSHOT_FILENAME = ".agent_view.png";
+        
+        /// <summary>
+        /// Returns the absolute path to the screenshot file in the Unity project root
+        /// </summary>
+        private static string GetScreenshotPath()
+        {
+            // Application.dataPath is "Assets" folder, go up one level to project root
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            return Path.Combine(projectRoot, SCREENSHOT_FILENAME);
+        }
 
         public void Initialize()
         {
@@ -50,10 +60,11 @@ namespace VibeLink.Editor.Powers
                     return new VibeLinkResponse(message.id, false, null, $"Invalid view type: {payload.viewType}");
                 }
 
-                // Save to file
-                File.WriteAllBytes(SCREENSHOT_PATH, imageData);
+                // Save to file (use absolute path)
+                string screenshotPath = GetScreenshotPath();
+                File.WriteAllBytes(screenshotPath, imageData);
 
-                return new VibeLinkResponse(message.id, true, SCREENSHOT_PATH);
+                return new VibeLinkResponse(message.id, true, screenshotPath);
             }
             catch (Exception ex)
             {

@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package vibelink;
+
+// Common message wrapper for all VibeLink communication
+message VibeLinkMessage {
+  string id = 1;
+  string type = 2;  // "request" or "response"
+  string command = 3;
+  bytes payload = 4;  // Serialized payload message
+  int64 timestamp = 5;
+}
+
+message VibeLinkResponse {
+  string id = 1;
+  string type = 2;  // Always "response"
+  bool success = 3;
+  bytes result = 4;  // Serialized result message
+  string error = 5;
+  int64 timestamp = 6;
+}
+
+// ============================================
+// Command Payloads
+// ============================================
+
+message CaptureViewPayload {
+  string view_type = 1;  // "game" or "scene"
+  string resolution = 2; // "720p", "1080p"
+}
+
+message ExecuteScriptPayload {
+  string code = 1;
+  float timeout = 2;
+}
+
+message QueryStatePayload {
+  string selector = 1;
+}
+
+message RunPlayModePayload {
+  float duration = 1;
+}
+
+// ============================================
+// Result Types
+// ============================================
+
+message CaptureViewResult {
+  string image_path = 1;
+  bytes image_data = 2;  // Optional: inline image data
+}
+
+message ExecuteScriptResult {
+  bool success = 1;
+  string output = 2;
+  repeated string logs = 3;
+}
+
+message QueryStateResult {
+  repeated GameObject objects = 1;
+}
+
+message RunPlayModeResult {
+  repeated LogEntry logs = 1;
+  float duration = 2;
+}
+
+// ============================================
+// Data Types
+// ============================================
+
+message Vector3 {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message GameObject {
+  string name = 1;
+  bool active = 2;
+  string tag = 3;
+  string layer = 4;
+  Vector3 position = 5;
+  Vector3 rotation = 6;
+  Vector3 scale = 7;
+  repeated string components = 8;
+  repeated GameObject children = 9;
+  map<string, PropertyValue> properties = 10;
+}
+
+message PropertyValue {
+  oneof value {
+    string string_value = 1;
+    int32 int_value = 2;
+    float float_value = 3;
+    bool bool_value = 4;
+    Vector3 vector3_value = 5;
+    bytes bytes_value = 6;
+  }
+}
+
+message LogEntry {
+  LogType type = 1;
+  string message = 2;
+  string stack_trace = 3;
+  int64 timestamp = 4;
+}
+
+enum LogType {
+  LOG_TYPE_UNKNOWN = 0;
+  LOG_TYPE_LOG = 1;
+  LOG_TYPE_WARNING = 2;
+  LOG_TYPE_ERROR = 3;
+  LOG_TYPE_EXCEPTION = 4;
+  LOG_TYPE_ASSERT = 5;
+}

@@ -17,6 +17,7 @@ namespace VibeLink.Editor.Powers
         private float _playModeTimer = 0;
         private float _playModeDuration = 0;
         private List<string> _playModeLogs = new List<string>();
+        private TaskCompletionSource<string> _playModeCompletionSource;
 
         public void Initialize()
         {
@@ -33,27 +34,35 @@ namespace VibeLink.Editor.Powers
                 _playModeTimer = 0;
                 _playModeLogs.Clear();
                 _playModeRunning = true;
+                _playModeCompletionSource = new TaskCompletionSource<string>();
 
-                // Subscribe to log messages
-                Application.logMessageReceived += CaptureLog;
+                // Schedule all Unity API calls on main thread
+                EditorApplication.CallbackFunction startPlayMode = null;
+                startPlayMode = () =>
+                {
+                    EditorApplication.update -= startPlayMode;
+                    
+                    try
+                    {
+                        // Subscribe to log messages (must be on main thread)
+                        Application.logMessageReceived += CaptureLog;
 
-                // Enter play mode
-                EditorApplication.EnterPlaymode();
+                        // Subscribe to update for timer
+                        EditorApplication.update += UpdatePlayModeTimer;
 
-                // Subscribe to update
-                EditorApplication.update += UpdatePlayModeTimer;
+                        // Enter play mode
+                        EditorApplication.EnterPlaymode();
+                    }
+                    catch (Exception ex)
+                    {
+                        _playModeCompletionSource.TrySetException(ex);
+                    }
+                };
+
+                EditorApplication.update += startPlayMode;
 
                 // Wait for playmode to complete
-                while (_playModeRunning)
-                {
-                    await Task.Delay(100);
-                }
-
-                // Cleanup
-                Application.logMessageReceived -= CaptureLog;
-                EditorApplication.update -= UpdatePlayModeTimer;
-
-                string logResult = string.Join("\n", _playModeLogs);
+                string logResult = await _playModeCompletionSource.Task;
                 return new VibeLinkResponse(message.id, true, logResult);
             }
             catch (Exception ex)
@@ -71,7 +80,17 @@ namespace VibeLink.Editor.Powers
             if (_playModeTimer >= _playModeDuration)
             {
                 _playModeRunning = false;
+                
+                // Cleanup
+                Application.logMessageReceived -= CaptureLog;
+                EditorApplication.update -= UpdatePlayModeTimer;
+                
+                // Exit play mode
                 EditorApplication.ExitPlaymode();
+                
+                // Signal completion
+                string logResult = string.Join("\n", _playModeLogs);
+                _playModeCompletionSource?.TrySetResult(logResult);
             }
         }
 

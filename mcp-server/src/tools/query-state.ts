@@ -27,6 +27,9 @@ const handler: ToolHandler = {
   async execute(client: VibeLinkClient, args: any): Promise<CallToolResult> {
     const result = await client.sendCommand("unity_query_state", args);
     
+    // Debug: log raw result
+    console.error(`[query-state] Raw result from Unity: ${result?.substring(0, 500)}`);
+    
     return {
       content: [
         {

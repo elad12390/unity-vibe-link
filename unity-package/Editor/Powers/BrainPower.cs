@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
@@ -87,19 +89,36 @@ namespace VibeLink.Editor.Powers
 
         private string SerializeGameObject(GameObject obj)
         {
-            var data = new Dictionary<string, object>
-            {
-                ["name"] = obj.name,
-                ["active"] = obj.activeSelf,
-                ["tag"] = obj.tag,
-                ["layer"] = LayerMask.LayerToName(obj.layer),
-                ["position"] = obj.transform.position.ToString(),
-                ["rotation"] = obj.transform.rotation.eulerAngles.ToString(),
-                ["scale"] = obj.transform.localScale.ToString(),
-                ["components"] = obj.GetComponents<Component>().Select(c => c.GetType().Name).ToArray()
-            };
+            Vector3 pos = obj.transform.position;
+            Vector3 rot = obj.transform.rotation.eulerAngles;
+            Vector3 scale = obj.transform.localScale;
 
-            return JsonUtility.ToJson(data);
+            string[] components = obj.GetComponents<Component>()
+                .Where(c => c != null)
+                .Select(c => c.GetType().Name)
+                .ToArray();
+
+            // Manual JSON building - temporary until Protobuf is set up
+            var sb = new StringBuilder();
+            sb.Append("{");
+            sb.AppendFormat("\"name\":{0},", JsonString(obj.name));
+            sb.AppendFormat("\"active\":{0},", obj.activeSelf ? "true" : "false");
+            sb.AppendFormat("\"tag\":{0},", JsonString(obj.tag));
+            sb.AppendFormat("\"layer\":{0},", JsonString(LayerMask.LayerToName(obj.layer)));
+            sb.AppendFormat(CultureInfo.InvariantCulture, "\"position\":{{\"x\":{0},\"y\":{1},\"z\":{2}}},", pos.x, pos.y, pos.z);
+            sb.AppendFormat(CultureInfo.InvariantCulture, "\"rotation\":{{\"x\":{0},\"y\":{1},\"z\":{2}}},", rot.x, rot.y, rot.z);
+            sb.AppendFormat(CultureInfo.InvariantCulture, "\"scale\":{{\"x\":{0},\"y\":{1},\"z\":{2}}},", scale.x, scale.y, scale.z);
+            sb.Append("\"components\":[");
+            sb.Append(string.Join(",", components.Select(c => JsonString(c))));
+            sb.Append("]}");
+
+            return sb.ToString();
+        }
+
+        private string JsonString(string s)
+        {
+            if (s == null) return "null";
+            return "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r").Replace("\t", "\\t") + "\"";
         }
 
         private Task<T> ExecuteOnMainThread<T>(Func<T> action)
@@ -107,8 +126,6 @@ namespace VibeLink.Editor.Powers
             var tcs = new TaskCompletionSource<T>();
             bool executed = false;
 
-            // Use EditorApplication.update instead of delayCall
-            // It's more reliable for async contexts
             EditorApplication.CallbackFunction updateCallback = null;
             updateCallback = () =>
             {
